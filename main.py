@@ -14,7 +14,7 @@ matches["day_code"] = matches["date"].dt.dayofweek
 grouped_matches = matches.groupby("team")
 
 ## Selected team
-group = grouped_matches.get_group("Manchester City")
+group = grouped_matches.get_group("Manchester City").sort_values("date")
 
 matches["target"] = (matches["result"] == "W").astype("int")
 
@@ -30,8 +30,10 @@ def rolling_averages(group, cols, new_cols):
 
 cols = ["gf", "ga", "sh", "sot", "dist", "fk", "pk", "pkatt"]
 new_cols = [f"{c}_rolling" for c in cols]
+rolling_averages(group, cols, new_cols)
 
-matches_rolling = matches.groupby("team").apply(lambda x: rolling_averages(x.drop(columns=["team"]), cols, new_cols)).reset_index(drop=True)
+matches_rolling = matches.groupby("team").apply(lambda x: rolling_averages(x, cols, new_cols))
+matches_rolling = matches_rolling.droplevel('team')
 matches_rolling.index = range(matches_rolling.shape[0])
 
 def make_predictions(data, predictors):
@@ -39,7 +41,7 @@ def make_predictions(data, predictors):
     test = data[data["date"] > '2022-01-01']
     rf.fit(train[predictors], train["target"])
     preds = rf.predict(test[predictors])
-    combined = pd.DataFrame(dict(actual=test["target"], prediction=preds))
+    combined = pd.DataFrame(dict(actual=test["target"], predicted=preds), index=test.index)
     precision = precision_score(test["target"], preds)
     return combined, precision
 
